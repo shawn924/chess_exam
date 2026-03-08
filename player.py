@@ -58,7 +58,6 @@ class TransformerPlayer(Player):
 
         capture_moves = [m for m in legal_moves if board.is_capture(m)]
         if capture_moves:
-            # 随机从吃子步法里选一个，也比纯随机好得多
             return random.choice(capture_moves).uci()
         
         return random.choice(legal_moves).uci()
