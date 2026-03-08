@@ -60,6 +60,10 @@ class TransformerPlayer(Player):
         legal_moves = [m.uci() for m in board.legal_moves]
         if not legal_moves:
             return None
+        
+        prompt = f"<|fen|>{fen}<|move|>"
+        inputs = self._tokenizer(prompt, return_tensors="pt").to(self._device)
+        input_len = inputs.input_ids.shape[1]
 
         for attempt in range(self.max_attempts):
             try:
@@ -70,16 +74,16 @@ class TransformerPlayer(Player):
                     outputs = self._model.generate(
                         **inputs,
                         max_new_tokens=6,
-                        do_sample=False,
+                        do_sample=True,
+                        temperature=0.4,
+                        top_p=0.9,
                         pad_token_id=self._tokenizer.eos_token_id
                     )
 
-                decoded = self._tokenizer.decode(outputs[0], skip_special_tokens=True)
-                
-                if "<|move|>" in decoded:
-                    move_part = decoded.split("<|move|>")[-1].strip()
-                else:
-                    move_part = decoded
+                # 直接通过索引切掉输入部分（Prompt），只保留模型新生成的 Token
+                new_tokens = outputs[0][input_len:] 
+                # 仅对新生成的棋步进行解码
+                move_part = self._tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
                 
                 match = self.uci_re.search(move_part)
                 if match:
